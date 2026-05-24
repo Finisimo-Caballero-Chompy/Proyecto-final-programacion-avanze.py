@@ -1,4 +1,8 @@
+
 import random
+import tkinter as tk
+from tkinter import messagebox
+
 
 class Barco:
     def __init__(self, tamaño):
@@ -30,22 +34,17 @@ class Tablero:
         self.grid = [['~' for _ in range(tamaño)] for _ in range(tamaño)]
         self.barcos = []
 
-    def mostrar(self):
-        for fila in self.grid:
-            print(" ".join(fila))
-        print()
-
     def es_valida(self, fila, columna):
         return 0 <= fila < self.tamaño and 0 <= columna < self.tamaño
 
     def agregar_barco(self, barco):
-        for (fila, columna) in barco.posiciones:
+        for fila, columna in barco.posiciones:
             if not self.es_valida(fila, columna):
                 return False
             if self.grid[fila][columna] != '~':
                 return False
 
-        for (fila, columna) in barco.posiciones:
+        for fila, columna in barco.posiciones:
             self.grid[fila][columna] = 'B'
 
         self.barcos.append(barco)
@@ -53,22 +52,20 @@ class Tablero:
 
     def disparar(self, fila, columna):
         if not self.es_valida(fila, columna):
-            print("Posición inválida")
-            return
+            return "Posición inválida"
 
         for barco in self.barcos:
             if barco.recibir_impacto(fila, columna):
-                print("Impacto")
                 self.grid[fila][columna] = 'X'
                 if barco.esta_hundido():
-                    print("Barco hundido")
-                return
+                    return "Barco hundido"
+                return "Impacto"
 
         if self.grid[fila][columna] == '~':
-            print("Agua")
             self.grid[fila][columna] = 'O'
-        else:
-            print("Ya disparaste aquí")
+            return "Agua"
+
+        return "Ya disparaste aquí"
 
     def hay_barcos(self):
         for barco in self.barcos:
@@ -93,23 +90,90 @@ class Juego:
                 barco.colocar(fila, columna, horizontal)
                 colocado = self.tablero.agregar_barco(barco)
 
-    def iniciar(self):
-        print("Bienvenido a Batalla Naval\n")
-        self.colocar_barcos_aleatorios()
 
-        while self.tablero.hay_barcos():
-            self.tablero.mostrar()
-            try:
-                fila = int(input("Fila: "))
-                columna = int(input("Columna: "))
-                self.tablero.disparar(fila, columna)
-            except:
-                print("Entrada inválida")
+class InterfazBatallaNaval:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Batalla Naval")
 
-        print("Ganaste. Hundiste toda la flota.")
+        self.juego = Juego()
+        self.botones = []
+
+        self.etiqueta_estado = tk.Label(
+            root,
+            text="Bienvenido a Batalla Naval",
+            font=("Arial", 12)
+        )
+        self.etiqueta_estado.pack(pady=10)
+
+        self.marco_tablero = tk.Frame(root)
+        self.marco_tablero.pack()
+
+        self.boton_nueva_partida = tk.Button(
+            root,
+            text="Nueva Partida",
+            command=self.nueva_partida
+        )
+        self.boton_nueva_partida.pack(pady=10)
+
+        self.crear_tablero()
+        self.nueva_partida()
+
+    def crear_tablero(self):
+        for fila in range(10):
+            fila_botones = []
+            for columna in range(10):
+                boton = tk.Button(
+                    self.marco_tablero,
+                    text=" ",
+                    width=3,
+                    height=1,
+                    font=("Arial", 12),
+                    command=lambda f=fila, c=columna: self.disparar(f, c)
+                )
+                boton.grid(row=fila, column=columna, padx=1, pady=1)
+                fila_botones.append(boton)
+            self.botones.append(fila_botones)
+
+    def nueva_partida(self):
+        self.juego = Juego()
+        self.juego.colocar_barcos_aleatorios()
+        self.etiqueta_estado.config(text="Nueva partida iniciada")
+
+        for fila in range(10):
+            for columna in range(10):
+                boton = self.botones[fila][columna]
+                boton.config(text=" ", state=tk.NORMAL)
+
+    def disparar(self, fila, columna):
+        resultado = self.juego.tablero.disparar(fila, columna)
+        self.etiqueta_estado.config(text=resultado)
+
+        boton = self.botones[fila][columna]
+
+        if resultado in ["Impacto", "Barco hundido"]:
+            boton.config(text="X", state=tk.DISABLED)
+        elif resultado == "Agua":
+            boton.config(text="O", state=tk.DISABLED)
+        elif resultado == "Ya disparaste aquí":
+            boton.config(state=tk.DISABLED)
+
+        if not self.juego.tablero.hay_barcos():
+            self.etiqueta_estado.config(text="Ganaste. Hundiste toda la flota.")
+            messagebox.showinfo(
+                "Victoria",
+                "Ganaste. Hundiste toda la flota."
+            )
+            self.desactivar_tablero()
+
+    def desactivar_tablero(self):
+        for fila in range(10):
+            for columna in range(10):
+                self.botones[fila][columna].config(state=tk.DISABLED)
 
 
-#profit
 if __name__ == "__main__":
-    juego = Juego()
-    juego.iniciar()
+    root = tk.Tk()
+    app = InterfazBatallaNaval(root)
+    root.mainloop()
+
